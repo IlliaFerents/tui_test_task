@@ -1,0 +1,49 @@
+{
+  "name": "tui_test_task",
+  "version": "1.0.0",
+  "description": "[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/IlliaFerents/tui_test_task?utm_source=oss&utm_medium=github&utm_campaign=IlliaFerents%2Ftui_test_task&labelColor=171717&color=FF570A&label=CodeRabbit+Reviews)](https://coderabbit.ai)",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IlliaFerents/tui_test_task.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/IlliaFerents/tui_test_task/issues"
+  },
+  "homepage": "https://github.com/IlliaFerents/tui_test_task#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@faker-js/faker": "^10.4.0",
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "dotenv": "^17.4.2",
+    "eight-colors": "^1.3.3",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-playwright": "^2.10.2",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  }
+}
