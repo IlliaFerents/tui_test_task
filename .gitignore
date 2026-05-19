@@ -8,3 +8,5 @@ node_modules/
 /playwright/.auth/
 .agents
 .env
+.claude
+CLAUDE.md
