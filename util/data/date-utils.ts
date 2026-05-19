@@ -46,8 +46,6 @@ export function parseDutchDate(raw: string): Date {
 
 /**
  * Returns the boundary birth date for the adult minimum age check (MIN_DATE=18).
- *
- * TUI rule: age on return date must be > 18 (strictly older).
  * - Born on this date = exactly 18 on return = INVALID
  * - Born 1 day earlier = 18y 1d = VALID
  * - Born 1 day later = 17y 364d = INVALID
@@ -58,13 +56,9 @@ export function getAdultMinAgeBoundary(returnDate: Date): Date {
 
 /**
  * Returns the boundary birth date for the adult maximum age check (MAX_DATE=118).
- *
- * TUI rule: age on return date must be <= 118.
  * - Born on this date = exactly 118 on return = VALID (boundary inclusive)
  * - Born 1 day earlier = 118y 1d = INVALID
  * - Born 1 day later = 117y 364d = VALID
- *
- * Verified: return June 7, 2026 → 07/06/1908 (exactly 118) = valid, 06/06/1908 (118y 1d) = invalid.
  */
 export function getAdultMaxAgeBoundary(returnDate: Date): Date {
     return new Date(returnDate.getFullYear() - 118, returnDate.getMonth(), returnDate.getDate());
@@ -92,8 +86,6 @@ export function getChildTooYoungBirthDate(returnDate: Date, childAge: number): D
 
 /**
  * Returns a birth date 1 day before the child would turn childAge+1 on the return date.
- * This child is already childAge+1 on return → age mismatch error expected.
- *
  * Example: childAge=3, return=23/06/2026
  *   - exact boundary for age 4: 23/06/2022
  *   - too old BVA: 22/06/2022 (turns 4 on return → mismatch)
