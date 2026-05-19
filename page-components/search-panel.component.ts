@@ -1,10 +1,13 @@
 import type { Page, Locator } from "@playwright/test";
 import { getRandomArrayElement } from "../util/data/generator";
+import { AvailabilityApi } from "../util/api/availability-api";
+import { CheckboxList } from "../util/helpers/checkbox-list";
 
 type SearchPanel = "airports" | "destinations" | "Departure date" | "room and guest";
 
 export class SearchPanelComponent {
     private readonly page: Page;
+    private readonly api: AvailabilityApi;
     readonly container: Locator;
 
     readonly departureAirportInput: Locator;
@@ -25,6 +28,7 @@ export class SearchPanelComponent {
 
     constructor(page: Page) {
         this.page = page;
+        this.api = new AvailabilityApi(page);
         this.container = page.getByLabel("search panel container");
 
         // Search panel triggers
@@ -59,10 +63,8 @@ export class SearchPanelComponent {
             return;
         }
 
-        // Departures request fires only on first open; race against checkbox visibility as fallback
-        const departuresResponse = this.page.waitForResponse(
-            (r) => r.url().includes("/searchpanel/v1/packages/availability/departures") && r.status() === 200
-        );
+        // Start listening before the click to avoid missing a fast response
+        const departuresResponse = this.api.waitFor("departures");
 
         await this.departureAirportInput.click();
         await Promise.race([departuresResponse, firstCheckbox.waitFor({ state: "visible" })]);
@@ -76,21 +78,10 @@ export class SearchPanelComponent {
     async getAvailableDepartureAirports(): Promise<string[]> {
         await this.openDepartureAirportPanel();
 
-        const airportCheckboxes = this.airportListSection.getByRole("checkbox");
-        const availableAirports: string[] = [];
+        const airports = new CheckboxList(this.airportListSection.getByRole("checkbox"));
+        const availableAirports = await airports.getEnabledTexts();
 
-        for (const checkbox of await airportCheckboxes.all()) {
-            const input = checkbox.locator("input");
-
-            if (!(await input.isDisabled())) {
-                const text = (await checkbox.innerText()).trim();
-                if (text !== "Alle luchthavens") {
-                    availableAirports.push(text);
-                }
-            }
-        }
-
-        await this.save("airports");
+        // await this.save("airports");
         return availableAirports;
     }
 
@@ -102,15 +93,10 @@ export class SearchPanelComponent {
         await this.openDepartureAirportPanel();
 
         const targetAirports = Array.isArray(airports) ? airports : [airports];
+        const airportList = new CheckboxList(this.airportListSection.getByRole("checkbox"));
 
         for (const airport of targetAirports) {
-            const checkbox = this.airportListSection.getByRole("checkbox").filter({ hasText: airport });
-
-            const input = checkbox.locator("input");
-
-            if (!(await input.isChecked())) {
-                await checkbox.click();
-            }
+            await airportList.toggle(airport);
         }
 
         await this.save("airports");
@@ -145,10 +131,8 @@ export class SearchPanelComponent {
             return;
         }
 
-        // Countries request fires only on first open; race against link visibility as fallback
-        const countriesResponse = this.page.waitForResponse(
-            (r) => r.url().includes("/searchpanel/v1/packages/availability/countries") && r.status() === 200
-        );
+        // Start listening before the click to avoid missing a fast response
+        const countriesResponse = this.api.waitFor("countries");
 
         await this.destinationListButton.click();
         await Promise.race([countriesResponse, firstLink.waitFor({ state: "visible" })]);
@@ -190,14 +174,11 @@ export class SearchPanelComponent {
 
         const firstCheckbox = this.destinationsGroup.getByRole("checkbox").first();
 
-        // Destinations request fires on country click; race against checkbox visibility as fallback
-        const destinationsResponse = this.page.waitForResponse(
-            (r) => r.url().includes("/searchpanel/v1/packages/availability/destinations") && r.status() === 200
-        );
+        // Start listening before the click to avoid missing a fast response
+        const destinationsResponse = this.api.waitFor("destinations");
 
         await this.destinationListContainer.locator("a").filter({ hasText: country }).click();
-        await Promise.race([destinationsResponse, firstCheckbox.waitFor({ state: "visible" })]);
-        await firstCheckbox.waitFor({ state: "visible" });
+        await Promise.all([destinationsResponse, firstCheckbox.waitFor({ state: "visible" })]);
     }
 
     /**
@@ -221,14 +202,10 @@ export class SearchPanelComponent {
      */
     async selectRegion(destinations: string | string[]): Promise<void> {
         const targets = Array.isArray(destinations) ? destinations : [destinations];
+        const regionList = new CheckboxList(this.destinationsGroup.getByRole("checkbox"));
 
         for (const dest of targets) {
-            const checkbox = this.destinationsGroup.getByRole("checkbox").filter({ hasText: dest });
-            const input = checkbox.locator("input");
-
-            if (!(await input.isChecked())) {
-                await checkbox.click();
-            }
+            await regionList.toggle(dest);
         }
 
         await this.save("destinations");
@@ -239,16 +216,8 @@ export class SearchPanelComponent {
      * @returns The name of the selected region.
      */
     async selectRandomRegion(): Promise<string> {
-        const checkboxElements = this.destinationsGroup.getByRole("checkbox");
-        const availableOptions: string[] = [];
-
-        for (const checkbox of await checkboxElements.all()) {
-            const input = checkbox.locator("input");
-            if (!(await input.isDisabled())) {
-                const text = (await checkbox.innerText()).trim();
-                availableOptions.push(text);
-            }
-        }
+        const regions = new CheckboxList(this.destinationsGroup.getByRole("checkbox"));
+        const availableOptions = await regions.getEnabledTexts();
 
         if (availableOptions.length === 0) {
             throw new Error("No available child destinations found to check.");
@@ -275,8 +244,9 @@ export class SearchPanelComponent {
      * Selects the first available date in the calendar dropdown.
      */
     async selectFirstAvailableDate(): Promise<void> {
+        const checkInsResponse = this.api.waitFor("check-ins");
         await this.departureDateInput.click();
-        await this.calendarWrapper.waitFor({ state: "visible" });
+        await Promise.all([checkInsResponse, this.calendarWrapper.waitFor({ state: "visible" })]);
 
         await this.availableDepartureDayCell.click();
         await this.save("Departure date");
@@ -306,6 +276,35 @@ export class SearchPanelComponent {
     // ==========================================
     // General Methods Block
     // ==========================================
+
+    /**
+     * Returns the selected duration in nights.
+     * Maps TUI's duration select option values to their night counts.
+     * "Meer dan X nachten" options are not supported — the actor uses the default 7-night option.
+     */
+    async getDurationNights(): Promise<number> {
+        const DURATION_MAP: Record<string, number> = {
+            "2115": 2,
+            "3115": 3,
+            "4115": 4,
+            "5115": 5,
+            "6115": 6,
+            "7115": 7,
+            "8115": 8,
+            "9115": 9,
+            "1015": 10,
+            "1115": 11,
+            "1215": 12,
+            "1315": 13,
+            "1415": 14
+        };
+        const value = await this.durationSelect.inputValue();
+        const nights = DURATION_MAP[value];
+        if (nights === undefined) {
+            throw new Error(`Unsupported duration select value: "${value}". Only exact night counts are supported.`);
+        }
+        return nights;
+    }
 
     /**
      * Clicks the search button to submit the search panel query.
