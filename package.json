@@ -5,7 +5,10 @@
     "main": "index.js",
     "scripts": {
         "test": "playwright test",
-        "test:ui": "playwright test --ui",
+        "test:headed": "playwright test --headed",
+        "test:debug": "playwright test --debug",
+        "test:validation:parallel": "playwright test tests/passenger-details/validation --workers=4 --project=chromium",
+        "test:report": "playwright show-report",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",

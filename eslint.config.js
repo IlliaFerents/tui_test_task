@@ -87,7 +87,15 @@ module.exports = [
             "playwright/valid-test-tags": [
                 "error",
                 {
-                    allowedTags: []
+                    allowedTags: [
+                        "@passenger_details",
+                        "@field_validation",
+                        "@adult_passenger",
+                        "@child_passenger",
+                        "@smoke",
+                        "@regression",
+                        "@dob"
+                    ]
                 }
             ]
         }
