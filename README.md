@@ -73,6 +73,10 @@ Three fixture layers, composed into a single `test` export:
 
 The actor is consumed as a fixture dependency. Validation specs declare `passengerDetailsSetup` in their signature, which triggers the full journey as test precondition.
 
+> [!NOTE]
+> **Testing Pyramid Considerations**
+> While the Actor orchestrates the E2E setup for this assignment, executing a complex 10-step UI journey repeatedly to test form validation is highly inefficient. In a real-world production environment, exhaustive field-level error validation (empty fields, format rules, boundary values) should be pushed down the testing pyramid and tested at the **component** or **integration level**. E2E UI automation should be reserved for high-value critical paths (e.g., successful booking completion) to maintain a fast and stable CI/CD pipeline.
+
 ### Test design
 
 Validation specs are split by concern:
